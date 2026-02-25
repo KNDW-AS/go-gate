@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1280" height="720" viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1280" height="720" fill="#1a1a2e"/>
+  
+  <!-- Title -->
+  <text x="640" y="60" font-family="Arial, sans-serif" font-size="48" 
+        font-weight="bold" fill="#4a9eff" text-anchor="middle">GO-GATE™</text>
+  <text x="640" y="100" font-family="Arial, sans-serif" font-size="24" 
+        fill="#ffffff" text-anchor="middle">AI Agent Security Kernel</text>
+  
+  <!-- Top Row Boxes -->
+  <!-- Agent Request -->
+  <rect x="120" y="160" width="200" height="80" rx="15" fill="#16213e" stroke="#ffffff" stroke-width="2"/>
+  <text x="220" y="195" font-family="Arial, sans-serif" font-size="18" 
+        font-weight="bold" fill="#ffffff" text-anchor="middle">Agent</text>
+  <text x="220" y="220" font-family="Arial, sans-serif" font-size="16" 
+        fill="#ffffff" text-anchor="middle">Request</text>
+  
+  <!-- GO-GATE 2PC Engine -->
+  <rect x="480" y="150" width="320" height="100" rx="15" fill="#0f3460" stroke="#4a9eff" stroke-width="3"/>
+  <text x="640" y="190" font-family="Arial, sans-serif" font-size="22" 
+        font-weight="bold" fill="#ffffff" text-anchor="middle">GO-GATE</text>
+  <text x="640" y="220" font-family="Arial, sans-serif" font-size="20" 
+        font-weight="bold" fill="#ffffff" text-anchor="middle">2PC Engine</text>
+  
+  <!-- Human Approval -->
+  <rect x="960" y="160" width="200" height="80" rx="15" fill="#16213e" stroke="#ffffff" stroke-width="2"/>
+  <text x="1060" y="195" font-family="Arial, sans-serif" font-size="18" 
+        font-weight="bold" fill="#ffffff" text-anchor="middle">Human</text>
+  <text x="1060" y="220" font-family="Arial, sans-serif" font-size="16" 
+        fill="#ffffff" text-anchor="middle">Approval</text>
+  
+  <!-- Arrows (Top Row) -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#4a9eff"/>
+    </marker>
+  </defs>
+  <line x1="320" y1="200" x2="480" y2="200" stroke="#4a9eff" stroke-width="4" marker-end="url(#arrowhead)"/>
+  <line x1="800" y1="200" x2="960" y2="200" stroke="#4a9eff" stroke-width="4" marker-end="url(#arrowhead)"/>
+  
+  <!-- Arrow Labels -->
+  <text x="400" y="190" font-family="Arial, sans-serif" font-size="14" 
+        font-weight="bold" fill="#4a9eff" text-anchor="middle">PREPARE</text>
+  <text x="880" y="190" font-family="Arial, sans-serif" font-size="14" 
+        font-weight="bold" fill="#4a9eff" text-anchor="middle">PENDING</text>
+  
+  <!-- Bottom Row Boxes -->
+  <!-- Policy Engine -->
+  <rect x="140" y="380" width="200" height="80" rx="15" fill="#e94560" stroke="#ffffff" stroke-width="2"/>
+  <text x="240" y="415" font-family="Arial, sans-serif" font-size="18" 
+        font-weight="bold" fill="#ffffff" text-anchor="middle">Policy</text>
+  <text x="240" y="440" font-family="Arial, sans-serif" font-size="18" 
+        font-weight="bold" fill="#ffffff" text-anchor="middle">Engine</text>
+  
+  <!-- Sandbox Executor -->
+  <rect x="540" y="380" width="200" height="80" rx="15" fill="#e94560" stroke="#ffffff" stroke-width="2"/>
+  <text x="640" y="415" font-family="Arial, sans-serif" font-size="18" 
+        font-weight="bold" fill="#ffffff" text-anchor="middle">Sandbox</text>
+  <text x="640" y="440" font-family="Arial, sans-serif" font-size="18" 
+        font-weight="bold" fill="#ffffff" text-anchor="middle">Executor</text>
+  
+  <!-- Audit Trail -->
+  <rect x="940" y="380" width="200" height="80" rx="15" fill="#e94560" stroke="#ffffff" stroke-width="2"/>
+  <text x="1040" y="415" font-family="Arial, sans-serif" font-size="18" 
+        font-weight="bold" fill="#ffffff" text-anchor="middle">Audit</text>
+  <text x="1040" y="440" font-family="Arial, sans-serif" font-size="18" 
+        font-weight="bold" fill="#ffffff" text-anchor="middle">Trail</text>
+  
+  <!-- Arrows (Engine to Components) -->
+  <line x1="560" y1="250" x2="280" y2="380" stroke="#4a9eff" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="640" y1="250" x2="640" y2="380" stroke="#4a9eff" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <line x1="720" y1="250" x2="1000" y2="380" stroke="#4a9eff" stroke-width="3" marker-end="url(#arrowhead)"/>
+  
+  <!-- Risk Level Indicators -->
+  <rect x="160" y="530" width="180" height="50" rx="10" fill="none" stroke="#00d9ff" stroke-width="2"/>
+  <text x="250" y="560" font-family="Arial, sans-serif" font-size="16" 
+        font-weight="bold" fill="#00d9ff" text-anchor="middle">LOW → COMMIT</text>
+  
+  <rect x="550" y="530" width="180" height="50" rx="10" fill="none" stroke="#ffd700" stroke-width="2"/>
+  <text x="640" y="560" font-family="Arial, sans-serif" font-size="16" 
+        font-weight="bold" fill="#ffd700" text-anchor="middle">MEDIUM → VERIFY</text>
+  
+  <rect x="940" y="530" width="180" height="50" rx="10" fill="none" stroke="#ff6b6b" stroke-width="2"/>
+  <text x="1030" y="560" font-family="Arial, sans-serif" font-size="16" 
+        font-weight="bold" fill="#ff6b6b" text-anchor="middle">HIGH → HUMAN</text>
+  
+  <!-- Tagline -->
+  <text x="640" y="640" font-family="Arial, sans-serif" font-size="16" 
+        fill="#4a9eff" text-anchor="middle" opacity="0.9">
+    Fail-Closed Security · Immutable Audit · Sandboxed Execution
+  </text>
+  
+  <!-- Footer -->
+  <text x="640" y="690" font-family="Arial, sans-serif" font-size="18" 
+        fill="#ffffff" text-anchor="middle" opacity="0.8">
+    Designed in Norway 🇳🇴
+  </text>
+</svg>

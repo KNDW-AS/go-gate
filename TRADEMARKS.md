@@ -11,7 +11,7 @@
 You may use the GO-GATE trademark to:
 
 - Refer to the GO-GATE project and its official releases
-- Link to the official GO-GATE repository (https://github.com/billyxp74/go-gate)
+- Link to the [official GO-GATE repository](https://github.com/billyxp74/go-gate)
 - Indicate compatibility with GO-GATE (e.g., "Compatible with GO-GATE™")
 
 #### Prohibited Uses

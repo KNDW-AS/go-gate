@@ -76,11 +76,11 @@ async def main():
     print(result.status)  # COMMITTED
     
     # HIGH risk – requires human approval
-    # Attempting to read outside allowed workspace
+    # Pushing to remote repository
     result = await gate.execute({
-        'op_type': 'FILE_READ',
-        'target': '/etc/passwd',  # Outside allowed paths – blocked!
-        'payload': {}
+        'op_type': 'GIT_PUSH',
+        'target': 'origin',  # High risk operation – blocked pending approval!
+        'payload': {'branch': 'main'}
     })
     print(result.status)  # PENDING_HUMAN_APPROVAL
 
@@ -107,11 +107,13 @@ asyncio.run(main())
 
 Risk is determined automatically by the Policy Engine based on `op_type` and `target`.
 
+**Note:** Default policies are automatically seeded from Python code (`_init_policies()`) on first startup — no manual configuration required. GO-GATE is plug-and-play.
+
 | Level | Operations | Approval |
 |-------|-----------|----------|
 | **LOW** | FILE_WRITE (safe paths) | Auto-approve |
 | **MEDIUM** | FILE_DELETE, GIT_COMMIT | Verify then approve |
-| **HIGH** | SHELL_EXEC, FILE_READ (outside workspace) | Human required |
+| **HIGH** | SHELL_EXEC, GIT_PUSH | Human required |
 | **UNKNOWN** | Any undefined operation | **Human required** (fail-closed) |
 
 ### 🛡️ Security Guarantees
@@ -216,11 +218,11 @@ async def main():
     print(result.status)  # COMMITTED
     
     # 高风险 – 需人工批准
-    # 尝试读取工作区外的文件
+    # 推送到远程仓库
     result = await gate.execute({
-        'op_type': 'FILE_READ',
-        'target': '/etc/passwd',  # 超出允许路径 – 被阻止！
-        'payload': {}
+        'op_type': 'GIT_PUSH',
+        'target': 'origin',  # 高风险操作 – 等待批准！
+        'payload': {'branch': 'main'}
     })
     print(result.status)  # PENDING_HUMAN_APPROVAL
 
@@ -247,11 +249,13 @@ asyncio.run(main())
 
 风险由策略引擎根据 `op_type` 和 `target` 自动确定。
 
+**注意：** 默认策略在首次启动时自动从 Python 代码（`_init_policies()`）填充 — 无需手动配置。GO-GATE 开箱即用。
+
 | 等级 | 操作 | 审批 |
 |------|------|------|
 | **低风险** | 文件写入（安全路径） | 自动批准 |
 | **中风险** | 文件删除、Git提交 | 验证后批准 |
-| **高风险** | Shell执行、FILE_READ（工作区外） | 需人工审批 |
+| **高风险** | Shell执行、GIT_PUSH | 需人工审批 |
 | **未知** | 任何未定义操作 | **需人工审批**（故障安全）|
 
 ### 🛡️ 安全保证

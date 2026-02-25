@@ -2,7 +2,7 @@
 
 **Database-Grade Safety for AI Agents**
 
-![GO-GATE™ – AI Agent Security Kernel](docs/assets/go-gate-architecture.svg)
+![GO-GATE™ – AI Agent Security Kernel](docs/assets/go-gate-architecture.jpg)
 
 [English](#english) | [中文](#中文)
 
@@ -148,7 +148,7 @@ Apache 2.0 – See [LICENSE](LICENSE)
 
 **AI代理的数据库级安全保障**
 
-![GO-GATE™ – AI Agent Security Kernel](docs/assets/go-gate-architecture.svg)
+![GO-GATE™ – AI Agent Security Kernel](docs/assets/go-gate-architecture.jpg)
 
 ---
 

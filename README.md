@@ -130,6 +130,16 @@ Risk is determined automatically by the Policy Engine based on `op_type` and `ta
 - [API Reference](docs/api_reference.md)
 - [Deployment Guide](docs/deployment.md)
 
+### 🧪 Testing
+
+```bash
+# Install with dev dependencies
+pip install ".[dev]"
+
+# Run tests
+pytest -q
+```
+
 ### 🤝 Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
@@ -271,6 +281,16 @@ asyncio.run(main())
 - [威胁模型](docs/threat_model.md)
 - [API参考](docs/api_reference.md)
 - [部署指南](docs/deployment.md)
+
+### 🧪 测试
+
+```bash
+# 安装开发依赖
+pip install ".[dev]"
+
+# 运行测试
+pytest -q
+```
 
 ### 🤝 贡献
 

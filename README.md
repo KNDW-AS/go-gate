@@ -22,7 +22,7 @@ GO-GATE brings **Two-Phase Commit (2PC)** safety guarantees to AI agent operatio
 - **Risk-Based Policies** – LOW (auto-approve) / MEDIUM (verify) / HIGH (human required)
 - **Sandboxed Execution** – No shell=True, path traversal prevention, workspace isolation
 - **Immutable Audit Trail** – SQLite WAL with append-only logging
-- **Human-in-the-Loop** – Webhook/callback integration for approvals
+- **Human-in-the-Loop** – Webhook/callback integration for approvals. Build your own approval clients (CLI, GUI, or chat bots) using the flexible callback API.
 - **Fail-Closed Security** – Unknown operations require human approval
 - **Cross-Platform Paths** – Uses `tempfile.gettempdir()` and `Path` for compatibility
 
@@ -55,30 +55,30 @@ from pathlib import Path
 from go_gate import GoGate
 
 async def main():
-    # Uses tempfile for cross-platform compatibility
+    # Demo: using tempfile. For production, use a persistent db_path.
     db_path = Path(tempfile.gettempdir()) / 'go-gate' / 'go_gate.db'
     db_path.parent.mkdir(parents=True, exist_ok=True)
     
     gate = GoGate(db_path=str(db_path))
     
-    # LOW risk – auto-approved
+    # LOW risk (FILE_WRITE to allowed path) – auto-approved by Policy Engine
     output_path = Path(tempfile.gettempdir()) / 'go-gate-sandbox' / 'output.txt'
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
     result = await gate.execute({
         'op_type': 'FILE_WRITE',
         'target': str(output_path),
-        'payload': {'content': 'Hello World'},
-        'risk_level': 'LOW'
+        'payload': {'content': 'Hello World'}
+        # Note: risk_level is determined internally by Policy Engine
     })
     print(result.status)  # COMMITTED
     
     # HIGH risk – requires human approval
+    # Attempting to read outside allowed workspace
     result = await gate.execute({
-        'op_type': 'SHELL_EXEC',
-        'target': 'dangerous-command',
-        'payload': {'command': 'rm -rf /'},  # Blocked by policy!
-        'risk_level': 'HIGH'
+        'op_type': 'FILE_READ',
+        'target': '/etc/passwd',  # Outside allowed paths – blocked!
+        'payload': {}
     })
     print(result.status)  # PENDING_HUMAN_APPROVAL
 
@@ -103,11 +103,13 @@ asyncio.run(main())
 
 ### 📊 Risk Levels
 
+Risk is determined automatically by the Policy Engine based on `op_type` and `target`.
+
 | Level | Operations | Approval |
 |-------|-----------|----------|
-| **LOW** | FILE_WRITE (safe paths), IMAGE_GENERATE | Auto-approve |
+| **LOW** | FILE_WRITE (safe paths) | Auto-approve |
 | **MEDIUM** | FILE_DELETE, GIT_COMMIT | Verify then approve |
-| **HIGH** | SHELL_EXEC, SUDO_EXEC | Human required |
+| **HIGH** | SHELL_EXEC, FILE_READ (outside workspace) | Human required |
 | **UNKNOWN** | Any undefined operation | **Human required** (fail-closed) |
 
 ### 🛡️ Security Guarantees
@@ -130,11 +132,11 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 All contributors must sign the [Contributor License Agreement (CLA)](CLA.md).
 
-### 📝 License
+### 📝 License & Trademarks
 
 Apache 2.0 – See [LICENSE](LICENSE)
 
-**GO-GATE™** is a trademark of William Park.
+**GO-GATE™** is a trademark of William Park. See [TRADEMARKS.md](TRADEMARKS.md) for usage guidelines.
 
 ---
 
@@ -158,7 +160,7 @@ Apache 2.0 – See [LICENSE](LICENSE)
 - **基于风险的策略** – 低风险（自动批准）/ 中风险（验证）/ 高风险（需人工）
 - **沙盒执行** – 禁止shell=True，防止路径遍历，工作区隔离
 - **不可变审计追踪** – SQLite WAL只追加日志
-- **人工介入** – Webhook/回调集成用于审批
+- **人工介入** – Webhook/回调集成用于审批。使用灵活的回调 API 构建您自己的审批客户端（CLI、GUI 或聊天机器人）。
 - **故障安全** – 未知操作需人工批准
 - **跨平台路径** – 使用 `tempfile.gettempdir()` 和 `Path` 确保兼容性
 
@@ -191,30 +193,30 @@ from pathlib import Path
 from go_gate import GoGate
 
 async def main():
-    # 使用 tempfile 确保跨平台兼容性
+    # 演示：使用 tempfile。生产环境请使用持久化 db_path。
     db_path = Path(tempfile.gettempdir()) / 'go-gate' / 'go_gate.db'
     db_path.parent.mkdir(parents=True, exist_ok=True)
     
     gate = GoGate(db_path=str(db_path))
     
-    # 低风险 – 自动批准
+    # 低风险（FILE_WRITE 到允许路径）– 由策略引擎自动批准
     output_path = Path(tempfile.gettempdir()) / 'go-gate-sandbox' / 'output.txt'
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
     result = await gate.execute({
         'op_type': 'FILE_WRITE',
         'target': str(output_path),
-        'payload': {'content': 'Hello World'},
-        'risk_level': 'LOW'
+        'payload': {'content': 'Hello World'}
+        # 注意：风险等级由策略引擎内部确定
     })
     print(result.status)  # COMMITTED
     
     # 高风险 – 需人工批准
+    # 尝试读取工作区外的文件
     result = await gate.execute({
-        'op_type': 'SHELL_EXEC',
-        'target': 'dangerous-command',
-        'payload': {'command': 'rm -rf /'},  # 被策略阻止！
-        'risk_level': 'HIGH'
+        'op_type': 'FILE_READ',
+        'target': '/etc/passwd',  # 超出允许路径 – 被阻止！
+        'payload': {}
     })
     print(result.status)  # PENDING_HUMAN_APPROVAL
 
@@ -239,11 +241,13 @@ asyncio.run(main())
 
 ### 📊 风险等级
 
+风险由策略引擎根据 `op_type` 和 `target` 自动确定。
+
 | 等级 | 操作 | 审批 |
 |------|------|------|
-| **低风险** | 文件写入（安全路径）、图像生成 | 自动批准 |
+| **低风险** | 文件写入（安全路径） | 自动批准 |
 | **中风险** | 文件删除、Git提交 | 验证后批准 |
-| **高风险** | Shell执行、Sudo执行 | 需人工审批 |
+| **高风险** | Shell执行、FILE_READ（工作区外） | 需人工审批 |
 | **未知** | 任何未定义操作 | **需人工审批**（故障安全）|
 
 ### 🛡️ 安全保证
@@ -266,8 +270,8 @@ asyncio.run(main())
 
 所有贡献者必须签署 [贡献者许可协议（CLA）](CLA.md)。
 
-### 📝 许可证
+### 📝 许可证与商标
 
 Apache 2.0 – 参见 [LICENSE](LICENSE)
 
-**GO-GATE™** 是 William Park 的商标。
+**GO-GATE™** 是 William Park 的商标。使用指南参见 [TRADEMARKS.md](TRADEMARKS.md)。

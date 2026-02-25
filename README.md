@@ -24,6 +24,17 @@ GO-GATE brings **Two-Phase Commit (2PC)** safety guarantees to AI agent operatio
 - **Immutable Audit Trail** – SQLite WAL with append-only logging
 - **Human-in-the-Loop** – Webhook/callback integration for approvals
 - **Fail-Closed Security** – Unknown operations require human approval
+- **Cross-Platform Paths** – Uses `tempfile.gettempdir()` and `Path` for compatibility
+
+### 💻 Platform Support
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| **Linux** | ✅ Primary | Full support, tested on Ubuntu/Debian |
+| **macOS** | ✅ Best Effort | Expected to work, POSIX-compatible |
+| **Windows** | ⚠️ Experimental | Community support, known limitations with subprocess/permissions |
+
+**v1.0 Focus:** Linux/POSIX-first. Windows support is experimental due to differences in process control, permissions, and service management.
 
 ### 🚀 Quick Start
 
@@ -39,15 +50,24 @@ pip install -e .
 
 ```python
 import asyncio
+import tempfile
+from pathlib import Path
 from go_gate import GoGate
 
 async def main():
-    gate = GoGate(db_path='./go_gate.db')
+    # Uses tempfile for cross-platform compatibility
+    db_path = Path(tempfile.gettempdir()) / 'go-gate' / 'go_gate.db'
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    gate = GoGate(db_path=str(db_path))
     
     # LOW risk – auto-approved
+    output_path = Path(tempfile.gettempdir()) / 'go-gate-sandbox' / 'output.txt'
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
     result = await gate.execute({
         'op_type': 'FILE_WRITE',
-        'target': '/tmp/sandbox/output.txt',
+        'target': str(output_path),
         'payload': {'content': 'Hello World'},
         'risk_level': 'LOW'
     })
@@ -56,8 +76,8 @@ async def main():
     # HIGH risk – requires human approval
     result = await gate.execute({
         'op_type': 'SHELL_EXEC',
-        'target': 'rm -rf /',
-        'payload': {'command': 'rm -rf /'},
+        'target': 'dangerous-command',
+        'payload': {'command': 'rm -rf /'},  # Blocked by policy!
         'risk_level': 'HIGH'
     })
     print(result.status)  # PENDING_HUMAN_APPROVAL
@@ -140,6 +160,17 @@ Apache 2.0 – See [LICENSE](LICENSE)
 - **不可变审计追踪** – SQLite WAL只追加日志
 - **人工介入** – Webhook/回调集成用于审批
 - **故障安全** – 未知操作需人工批准
+- **跨平台路径** – 使用 `tempfile.gettempdir()` 和 `Path` 确保兼容性
+
+### 💻 平台支持
+
+| 平台 | 状态 | 说明 |
+|------|------|-------|
+| **Linux** | ✅ 主要 | 完全支持，在 Ubuntu/Debian 上测试 |
+| **macOS** | ✅ 尽力支持 | 预期可用，POSIX 兼容 |
+| **Windows** | ⚠️ 实验性 | 社区支持，子进程/权限方面存在已知限制 |
+
+**v1.0 重点：** Linux/POSIX 优先。Windows 支持为实验性，因进程控制、权限和服务管理方面存在差异。
 
 ### 🚀 快速开始
 
@@ -155,15 +186,24 @@ pip install -e .
 
 ```python
 import asyncio
+import tempfile
+from pathlib import Path
 from go_gate import GoGate
 
 async def main():
-    gate = GoGate(db_path='./go_gate.db')
+    # 使用 tempfile 确保跨平台兼容性
+    db_path = Path(tempfile.gettempdir()) / 'go-gate' / 'go_gate.db'
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    gate = GoGate(db_path=str(db_path))
     
     # 低风险 – 自动批准
+    output_path = Path(tempfile.gettempdir()) / 'go-gate-sandbox' / 'output.txt'
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
     result = await gate.execute({
         'op_type': 'FILE_WRITE',
-        'target': '/tmp/sandbox/output.txt',
+        'target': str(output_path),
         'payload': {'content': 'Hello World'},
         'risk_level': 'LOW'
     })
@@ -172,8 +212,8 @@ async def main():
     # 高风险 – 需人工批准
     result = await gate.execute({
         'op_type': 'SHELL_EXEC',
-        'target': 'rm -rf /',
-        'payload': {'command': 'rm -rf /'},
+        'target': 'dangerous-command',
+        'payload': {'command': 'rm -rf /'},  # 被策略阻止！
         'risk_level': 'HIGH'
     })
     print(result.status)  # PENDING_HUMAN_APPROVAL

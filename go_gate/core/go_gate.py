@@ -328,10 +328,13 @@ class GoPolicyEngine:
         return True
     
     def _is_allowed_target(self, target: str) -> bool:
+        # Use tempfile for cross-platform temp directory
+        import tempfile
+        temp_dir = Path(tempfile.gettempdir())
         allowed_prefixes = [
-            '/tmp/go-gate-sandbox/',
-            '/tmp/go-gate-workspace/',
-            '/tmp/'
+            str(temp_dir / 'go-gate-sandbox') + '/',
+            str(temp_dir / 'go-gate-workspace') + '/',
+            str(temp_dir) + '/'
         ]
         return any(target.startswith(p) for p in allowed_prefixes)
     

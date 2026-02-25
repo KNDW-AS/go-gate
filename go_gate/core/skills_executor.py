@@ -77,16 +77,19 @@ class SandboxedSkillsExecutor:
     
     # Allowed base paths for file operations (absolute paths)
     # Configure via GOGATE_WORKSPACES environment variable
+    # Uses tempfile.gettempdir() for cross-platform compatibility
+    import tempfile
+    _TEMP_DIR = Path(tempfile.gettempdir())
     ALLOWED_WORKSPACES = [
-        '/tmp/go-gate-sandbox',
-        '/tmp',  # Allow /tmp for temp files and E2E tests
+        str(_TEMP_DIR / 'go-gate-sandbox'),
+        str(_TEMP_DIR),  # Allow temp dir for temp files and E2E tests
     ]
     
     # Default output directory for generated files
-    DEFAULT_OUTPUT_DIR = Path('/tmp/go-gate-output')
+    DEFAULT_OUTPUT_DIR = _TEMP_DIR / 'go-gate-output'
     
     # Ensure sandbox directories exist
-    SANDBOX_DIR = Path('/tmp/aeris_sandbox')
+    SANDBOX_DIR = _TEMP_DIR / 'go-gate-sandbox'
     
     # Shell command whitelist (exact matches or patterns)
     SHELL_COMMAND_WHITELIST = [

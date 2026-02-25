@@ -24,158 +24,6 @@ except ImportError:
     SandboxedSkillsExecutor = None
     ExecutionResult = None
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# P5: ZEPH VERIFICATION (Semaphore-protected concurrent access)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-import threading
-import requests
-
-# Semaphore to prevent concurrent SecurityVerifier LLM calls (Claude requirement)
-_ZEPH_SEMAPHORE = threading.Semaphore(1)
-
-
-async def _security_verifier_verification(tx_id: str, operations: List[dict], db_path: str) -> dict:
-    """
-    P5: SecurityVerifier Verifikator for MEDIUM-risk transactions.
-    
-    Analyzes FILE_DELETE, GIT_COMMIT and other MEDIUM-risk operations.
-    Returns structured JSON with APPROVE/REJECT decision and reasoning.
-    
-    Fail-closed: timeout or invalid JSON = ABORT
-    Semaphore(1): Prevents concurrent SecurityVerifier LLM calls
-    
-    Returns:
-        {
-            'decision': 'APPROVE' | 'REJECT' | 'ABORT',
-            'confidence': float,  # 0.0 - 1.0
-            'reasoning': str,     # Human-readable explanation
-            'risk_factors': [str] # List of identified risks
-        }
-    """
-    # Acquire semaphore to prevent concurrent SecurityVerifier calls
-    acquired = _ZEPH_SEMAPHORE.acquire(timeout=30.0)
-    if not acquired:
-        # Fail-closed: couldn't acquire semaphore = ABORT
-        return {
-            'decision': 'ABORT',
-            'confidence': 0.0,
-            'reasoning': 'Could not acquire SecurityVerifier verification semaphore (concurrency limit)',
-            'risk_factors': ['SEMAPHORE_TIMEOUT']
-        }
-    
-    try:
-        # Build context for SecurityVerifier analysis
-        op_summary = []
-        for op in operations:
-            op_type = op.get('op_type', 'UNKNOWN')
-            target = op.get('target_path', op.get('target', 'unknown'))
-            op_summary.append(f"{op_type}: {target}")
-        
-        # Get transaction context from database
-        conn = sqlite3.connect(db_path)
-        cursor = conn.execute("""
-            SELECT proposer, created_at FROM go_transactions WHERE tx_id = ?
-        """, (tx_id,))
-        row = cursor.fetchone()
-        conn.close()
-        
-        proposer = row[0] if row else 'unknown'
-        created_at = row[1] if row else 'unknown'
-        
-        # Build prompt for LLM (SecurityVerifier analysis)
-        prompt = f"""You are SecurityVerifier, the security verifier for Secure Agent System (AI Agent System).
-Analyze the following MEDIUM-risk transaction and decide whether to APPROVE or REJECT.
-
-Transaction ID: {tx_id}
-Proposed by: {proposer}
-Created: {created_at}
-
-Operations:
-{chr(10).join(f"- {s}" for s in op_summary)}
-
-Analyze for:
-1. Path traversal attempts (../, symlinks)
-2. Destructive operations on critical files
-3. Operations outside allowed workspaces
-4. Git operations on sensitive branches
-5. Timing/context risks
-
-Return ONLY a JSON object with this structure:
-{{
-    "decision": "APPROVE" or "REJECT",
-    "confidence": 0.0 to 1.0,
-    "reasoning": "Brief explanation of decision",
-    "risk_factors": ["list", "of", "identified", "risks"]
-}}
-
-Be conservative. When in doubt, REJECT."""
-
-        # Call LLM (try Gemini first, fallback to local)
-        decision_data = None
-        try:
-            # Try Gemini API
-            from core.config import config
-            gemini_key = getattr(config, 'GEMINI_API_KEY', None)
-            
-            if gemini_key:
-                response = requests.post(
-                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}",
-                    json={
-                        "contents": [{"parts": [{"text": prompt}]}],
-                        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 500}
-                    },
-                    timeout=15
-                )
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    text_response = data.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
-                    # Extract JSON from response
-                    import re
-                    json_match = re.search(r'\{[^}]+\}', text_response, re.DOTALL)
-                    if json_match:
-                        decision_data = json.loads(json_match.group())
-        
-        except Exception as e:
-            # Log error but continue to fallback
-            print(f"[ZEPH] Gemini LLM call failed: {e}")
-        
-        # Validate and return result
-        if decision_data and 'decision' in decision_data:
-            decision = decision_data.get('decision', 'ABORT').upper()
-            if decision not in ('APPROVE', 'REJECT', 'ABORT'):
-                decision = 'ABORT'
-            
-            return {
-                'decision': decision,
-                'confidence': float(decision_data.get('confidence', 0.0)),
-                'reasoning': str(decision_data.get('reasoning', 'No reasoning provided')),
-                'risk_factors': list(decision_data.get('risk_factors', []))
-            }
-        else:
-            # Invalid JSON or missing fields = ABORT (fail-closed)
-            return {
-                'decision': 'ABORT',
-                'confidence': 0.0,
-                'reasoning': 'Invalid or missing response from SecurityVerifier LLM analysis',
-                'risk_factors': ['INVALID_LLM_RESPONSE']
-            }
-    
-    except Exception as e:
-        # Any exception = ABORT (fail-closed)
-        return {
-            'decision': 'ABORT',
-            'confidence': 0.0,
-            'reasoning': f'SecurityVerifier verification error: {str(e)}',
-            'risk_factors': ['VERIFICATION_EXCEPTION']
-        }
-    
-    finally:
-        # Always release semaphore
-        _ZEPH_SEMAPHORE.release()
-
-
 class GoPolicyEngine:
     """Risk-based policy engine for autonomous approval decisions."""
     
@@ -204,14 +52,12 @@ class GoPolicyEngine:
         """Ensure default policies exist."""
         conn = sqlite3.connect(self.db_path)
         conn.executescript("""
-            INSERT OR IGNORE INTO go_policies (op_type, default_risk, verification_threshold, auto_approve_allowed, requires_cross_agent, verifier_agent) VALUES
-            ('FILE_WRITE', 'LOW', 0.70, 1, 0, NULL),
-            ('FILE_DELETE', 'MEDIUM', 0.90, 1, 1, 'security_verifier'),
-            ('GIT_COMMIT', 'MEDIUM', 0.85, 1, 1, 'aeris_core'),
-            ('GIT_PUSH', 'HIGH', 1.00, 0, 0, NULL),
-            ('SHELL_EXEC', 'HIGH', 1.00, 0, 0, NULL),
-            ('SUDO_EXEC', 'HIGH', 1.00, 0, 0, NULL),
-            ('IMAGE_GENERATE', 'LOW', 0.60, 1, 0, NULL);
+            INSERT OR IGNORE INTO go_policies (op_type, default_risk, verification_threshold, auto_approve_allowed) VALUES
+            ('FILE_WRITE', 'LOW', 0.70, 1),
+            ('FILE_DELETE', 'MEDIUM', 0.90, 1),
+            ('GIT_COMMIT', 'MEDIUM', 0.85, 1),
+            ('GIT_PUSH', 'HIGH', 1.00, 0),
+            ('SHELL_EXEC', 'HIGH', 1.00, 0);
         """)
         conn.commit()
         conn.close()
@@ -220,8 +66,7 @@ class GoPolicyEngine:
         """Fetch policy with fail-closed default."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.execute("""
-            SELECT policy_id, default_risk, verification_threshold,
-                   auto_approve_allowed, requires_cross_agent, verifier_agent
+            SELECT policy_id, default_risk, verification_threshold, auto_approve_allowed
             FROM go_policies WHERE op_type = ?
         """, (op_type,))
         row = cursor.fetchone()
@@ -233,8 +78,6 @@ class GoPolicyEngine:
                 'default_risk': 'HIGH',
                 'verification_threshold': 1.0,
                 'auto_approve_allowed': False,
-                'requires_cross_agent': False,
-                'verifier_agent': None,
                 'fail_closed_reason': 'UNKNOWN_OP_TYPE'
             }
         
@@ -242,20 +85,18 @@ class GoPolicyEngine:
             'policy_id': row[0],
             'default_risk': row[1],
             'verification_threshold': row[2],
-            'auto_approve_allowed': bool(row[3]),
-            'requires_cross_agent': bool(row[4]),
-            'verifier_agent': row[5]
+            'auto_approve_allowed': bool(row[3])
         }
     
     def assess_transaction_risk(self, operations: List[dict]) -> tuple:
         """Returns (risk_level, verifier_agent, requires_human, max_threshold)."""
         max_risk = 'LOW'
         requires_human = False
-        cross_agent_required = False
         verifier = None
         max_threshold = 0.0
         
         for op in operations:
+            # 1. Policy lookup by op_type; unknown types fail-closed
             policy = self.resolve_policy(op['type'])
             
             if self._risk_higher(policy['default_risk'], max_risk):
@@ -269,19 +110,12 @@ class GoPolicyEngine:
                 max_risk = 'HIGH'
                 requires_human = True
             
-            if policy['requires_cross_agent']:
-                cross_agent_required = True
-                verifier = policy['verifier_agent']
-            
             if not policy['auto_approve_allowed']:
                 requires_human = True
         
-        if requires_human:
-            verifier = None
-        elif cross_agent_required:
-            verifier = verifier or 'security_verifier'
-        else:
-            verifier = 'aeris_core'
+        # Verifier is None for human-required, or webhook callback for auto-approve
+        if not requires_human:
+            verifier = policy.get('verifier_agent')  # May be None for webhook-based flows
             
         return max_risk, verifier, requires_human, max_threshold
     
@@ -317,9 +151,6 @@ class GoPolicyEngine:
             confidence += 0.3
         
         if self._is_safe_hours():
-            confidence += 0.2
-        
-        if verifier_agent in ('security_verifier', 'aeris_core'):
             confidence += 0.2
         
         return min(confidence, 1.0)
@@ -571,7 +402,7 @@ class GoGate:
     async def initialize(self):
         await self.watchdog.start()
     
-    async def propose_transaction(self, operations: List[dict], proposer: str = 'aeris') -> dict:
+    async def propose_transaction(self, operations: List[dict], proposer: str = 'agent') -> dict:
         tx_id = str(uuid.uuid4())
         
         risk_level, verifier, requires_human, threshold = self.policy_engine.assess_transaction_risk(operations)
@@ -627,78 +458,15 @@ class GoGate:
             await db.commit()
         
         if initial_status == 'PENDING_AUTO_APPROVAL' and verifier:
-            # P5: Use SecurityVerifier verification for MEDIUM-risk transactions
-            if verifier == 'security_verifier' and risk_level == 'MEDIUM':
-                security_verifier_result = await _security_verifier_verification(tx_id, operations, self.db_path)
-                
-                # Log SecurityVerifier decision to audit
-                async with aiosqlite.connect(self.db_path) as db:
-                    await db.execute("""
-                        INSERT INTO go_audit (tx_id, event_type, details, actor)
-                        VALUES (?, 'ZEPH_VERIFICATION', ?, ?)
-                    """, (tx_id, json.dumps(security_verifier_result), 'security_verifier'))
-                    await db.commit()
-                
-                if security_verifier_result['decision'] == 'APPROVE':
-                    # Use SecurityVerifier confidence as score
-                    score = security_verifier_result['confidence']
-                    snapshot = json.loads(policy_snapshot)
-                    required = snapshot['final_threshold']
-                    
-                    if score >= required:
-                        await self._mark_auto_approved(tx_id, 'security_verifier', score)
-                        commit_result = await self.commit(tx_id, 'security_verifier', auto=True)
-                        return commit_result
-                elif security_verifier_result['decision'] == 'REJECT':
-                    # SecurityVerifier rejected - mark as ABORTED
-                    async with aiosqlite.connect(self.db_path) as db:
-                        await db.execute("""
-                            UPDATE go_transactions 
-                            SET status = 'ABORTED', completed_at = ?
-                            WHERE tx_id = ?
-                        """, (datetime.utcnow().isoformat(), tx_id))
-                        await db.execute("""
-                            INSERT INTO go_audit (tx_id, event_type, details, actor)
-                            VALUES (?, 'ZEPH_REJECT', ?, ?)
-                        """, (tx_id, security_verifier_result['reasoning'], 'security_verifier'))
-                        await db.commit()
-                    
-                    return {
-                        'tx_id': tx_id,
-                        'status': 'ABORTED',
-                        'error': f"SecurityVerifier rejected: {security_verifier_result['reasoning']}",
-                        'security_verifier_analysis': security_verifier_result
-                    }
-                else:  # ABORT or any other decision
-                    # Fail-closed: ABORT transaction
-                    async with aiosqlite.connect(self.db_path) as db:
-                        await db.execute("""
-                            UPDATE go_transactions 
-                            SET status = 'ABORTED', completed_at = ?
-                            WHERE tx_id = ?
-                        """, (datetime.utcnow().isoformat(), tx_id))
-                        await db.execute("""
-                            INSERT INTO go_audit (tx_id, event_type, details, actor)
-                            VALUES (?, 'ZEPH_ABORT', ?, ?)
-                        """, (tx_id, security_verifier_result['reasoning'], 'security_verifier'))
-                        await db.commit()
-                    
-                    return {
-                        'tx_id': tx_id,
-                        'status': 'ABORTED',
-                        'error': f"SecurityVerifier aborted (fail-closed): {security_verifier_result['reasoning']}",
-                        'security_verifier_analysis': security_verifier_result
-                    }
-            else:
-                # Use legacy scoring for other verifiers
-                score = self.policy_engine.calculate_score(tx_id, verifier)
-                snapshot = json.loads(policy_snapshot)
-                required = snapshot['final_threshold']
-                
-                if score >= required:
-                    await self._mark_auto_approved(tx_id, verifier, score)
-                    commit_result = await self.commit(tx_id, verifier, auto=True)
-                    return commit_result
+            # Auto-approve based on policy threshold
+            score = self.policy_engine.calculate_score(tx_id, verifier)
+            snapshot = json.loads(policy_snapshot)
+            required = snapshot['final_threshold']
+            
+            if score >= required:
+                await self._mark_auto_approved(tx_id, verifier, score)
+                commit_result = await self.commit(tx_id, verifier, auto=True)
+                return commit_result
         
         return {
             'tx_id': tx_id,

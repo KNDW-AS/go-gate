@@ -138,6 +138,9 @@ pip install ".[dev]"
 
 # Run tests
 pytest -q
+
+# Verify installation (use single quotes to avoid bash history expansion)
+python -c 'from go_gate.core.go_gate import GoGate; print("GO-GATE ready")'
 ```
 
 ### 🤝 Contributing
@@ -290,6 +293,9 @@ pip install ".[dev]"
 
 # 运行测试
 pytest -q
+
+# 验证安装（使用单引号避免 bash 历史扩展）
+python -c 'from go_gate.core.go_gate import GoGate; print("GO-GATE ready")'
 ```
 
 ### 🤝 贡献

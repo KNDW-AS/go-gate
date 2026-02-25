@@ -524,8 +524,8 @@ class SandboxedSkillsExecutor:
                 cwd=payload.get('cwd', '/tmp/go-gate-sandbox'),
                 env={  # P2: Minimal isolated environment
                     'PATH': '/usr/local/bin:/usr/bin:/bin',
-                    'HOME': '/home/william',
-                    'USER': 'william',
+                    'HOME': str(Path.home()),
+                    'USER': os.environ.get('USER', 'agent'),
                     'GIT_TERMINAL_PROMPT': '0',  # Fail-closed for git
                 }
             )
@@ -585,11 +585,11 @@ class SandboxedSkillsExecutor:
             # P2: Minimal isolated environment
             git_env = {
                 'PATH': '/usr/local/bin:/usr/bin:/bin',
-                'HOME': '/home/william',
-                'USER': 'william',
+                'HOME': str(Path.home()),
+                'USER': os.environ.get('USER', 'agent'),
                 'GIT_TERMINAL_PROMPT': '0',  # Fail-closed: no interactive prompts
-                'GIT_AUTHOR_NAME': 'Agent System',
-                'GIT_AUTHOR_EMAIL': 'system@aeris.local',
+                'GIT_AUTHOR_NAME': 'GO-GATE Agent',
+                'GIT_AUTHOR_EMAIL': 'agent@go-gate.local',
             }
             
             # Add all changes (list-args, no shell)
@@ -684,8 +684,8 @@ class SandboxedSkillsExecutor:
             # P2: Minimal isolated environment
             git_env = {
                 'PATH': '/usr/local/bin:/usr/bin:/bin',
-                'HOME': '/home/william',
-                'USER': 'william',
+                'HOME': str(Path.home()),
+                'USER': os.environ.get('USER', 'agent'),
                 'GIT_TERMINAL_PROMPT': '0',  # Fail-closed: no interactive prompts
             }
             
